@@ -20,11 +20,11 @@ scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/au
 creds = ServiceAccountCredentials.from_json_keyfile_name("creds.json", scope)
 client = gspread.authorize(creds)
 
-# Открываем таблицу по названию (можно заменить на свою)
+# Открываем таблицу по названию
 SHEET_NAME = "Задания Челленджа по REELS"
 sheet = client.open(SHEET_NAME).sheet1  # используем первый лист
 
-# Словарь для локального подсчёта статистики (опционально)
+# Локальный подсчёт статистики
 user_tasks = {}
 
 @dp.message_handler(lambda message: "#задание" in message.text.lower())
@@ -34,23 +34,23 @@ async def handle_task(message: types.Message):
     task_text = message.text.strip()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Получаем все строки из таблицы
+    # Получаем все тексты заданий из таблицы
     try:
-        existing_tasks = sheet.col_values(3)  # Колонка C: Task Text
+        existing_tasks = sheet.col_values(3)  # колонка C — "Task Text"
     except Exception as e:
-        await message.reply(f"Ошибка при проверке таблицы: {e}")
+        await message.reply(f"❌ Ошибка при чтении таблицы: {e}")
         return
 
-    # Проверка на дублирование текста задания (без учёта регистра)
-    if task_text.lower() in (task.lower() for task in existing_tasks):
+    # Проверяем на дубли
+    if task_text in existing_tasks:
         await message.reply("🚨 Задание не принято, такой ответ уже был!")
         return
 
-    # Запись в Google Таблицу
+    # Запись в таблицу
     try:
         sheet.append_row([user_id, username, task_text, timestamp])
     except Exception as e:
-        await message.reply(f"Ошибка при сохранении в таблицу: {e}")
+        await message.reply(f"❌ Ошибка при сохранении в таблицу: {e}")
         return
 
     # Подсчёт заданий
@@ -58,8 +58,7 @@ async def handle_task(message: types.Message):
         user_tasks[user_id] = {"username": username, "count": 0}
     user_tasks[user_id]["count"] += 1
 
-    await message.reply(f"✅ Задание принято!\nОбщее количество от @{username}: {user_tasks[user_id]['count']}")
-
+    await message.reply(f"✅ Задание принято!")
 
 @dp.message_handler(commands=["статистика"])
 async def handle_stats(message: types.Message):

@@ -21,7 +21,7 @@ creds = ServiceAccountCredentials.from_json_keyfile_name("creds.json", scope)
 client = gspread.authorize(creds)
 
 # Открываем таблицу по названию (можно заменить на свою)
-SHEET_NAME = "Задания Челленджа"
+SHEET_NAME = "Задания Челленджа по REELS"
 sheet = client.open(SHEET_NAME).sheet1  # используем первый лист
 
 # Словарь для локального подсчёта статистики (опционально)

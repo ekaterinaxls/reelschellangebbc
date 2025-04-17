@@ -31,8 +31,20 @@ user_tasks = {}
 async def handle_task(message: types.Message):
     user_id = message.from_user.id
     username = message.from_user.username or message.from_user.full_name
-    task_text = message.text
+    task_text = message.text.strip()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Получаем все строки из таблицы
+    try:
+        existing_tasks = sheet.col_values(3)  # Колонка C: Task Text
+    except Exception as e:
+        await message.reply(f"Ошибка при проверке таблицы: {e}")
+        return
+
+    # Проверка на дублирование текста задания (без учёта регистра)
+    if task_text.lower() in (task.lower() for task in existing_tasks):
+        await message.reply("🚨 Задание не принято, такой ответ уже был!")
+        return
 
     # Запись в Google Таблицу
     try:
@@ -46,7 +58,8 @@ async def handle_task(message: types.Message):
         user_tasks[user_id] = {"username": username, "count": 0}
     user_tasks[user_id]["count"] += 1
 
-    await message.reply(f"✅ Задание принято!")
+    await message.reply(f"✅ Задание принято!\nОбщее количество от @{username}: {user_tasks[user_id]['count']}")
+
 
 @dp.message_handler(commands=["статистика"])
 async def handle_stats(message: types.Message):

@@ -46,7 +46,7 @@ async def handle_task(message: types.Message):
         user_tasks[user_id] = {"username": username, "count": 0}
     user_tasks[user_id]["count"] += 1
 
-    await message.reply(f"✅ Задание принято!\nОбщее количество от @{username}: {user_tasks[user_id]['count']}")
+    await message.reply(f"✅ Задание принято!")
 
 @dp.message_handler(commands=["статистика"])
 async def handle_stats(message: types.Message):

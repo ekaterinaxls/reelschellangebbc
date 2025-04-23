@@ -1,10 +1,10 @@
-executor.start_polling(dp, skip_updates=True)
 import logging
 import os
 import time
 from datetime import datetime
 
-from aiogram import Bot, Dispatcher, types, executor
+from aiogram import Bot, Dispatcher, types, executor  # ← ВАЖНО
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 

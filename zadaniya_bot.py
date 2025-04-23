@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from datetime import datetime
 
 from aiogram import Bot, Dispatcher, executor, types
@@ -27,6 +28,9 @@ sheet = client.open(SHEET_NAME).sheet1  # используем первый ли
 # Локальный подсчёт статистики
 user_tasks = {}
 
+# Храним последние сообщения от пользователей
+last_messages = {}
+
 @dp.message_handler(lambda message: "#задание" in message.text.lower())
 async def handle_task(message: types.Message):
     user_id = message.from_user.id
@@ -34,26 +38,34 @@ async def handle_task(message: types.Message):
     task_text = message.text.strip()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Получаем все тексты заданий из таблицы
+    # Проверка на повтор за последние 10 секунд
+    current_time = time.time()
+    if user_id in last_messages:
+        last_text, last_time = last_messages[user_id]
+        if task_text == last_text and (current_time - last_time) < 10:
+            # Дубликат → просто игнорируем
+            return
+
+    # Сохраняем текущий текст и время
+    last_messages[user_id] = (task_text, current_time)
+
+    # Проверка на дубли в таблице (как раньше)
     try:
-        existing_tasks = sheet.col_values(3)  # колонка C — "Task Text"
+        existing_tasks = sheet.col_values(3)
     except Exception as e:
         await message.reply(f"❌ Ошибка при чтении таблицы: {e}")
         return
 
-    # Проверяем на дубли
     if task_text in existing_tasks:
         await message.reply("🚨 Задание не принято, такой ответ уже был!")
         return
 
-    # Запись в таблицу
     try:
         sheet.append_row([user_id, username, task_text, timestamp])
     except Exception as e:
         await message.reply(f"❌ Ошибка при сохранении в таблицу: {e}")
         return
 
-    # Подсчёт заданий
     if user_id not in user_tasks:
         user_tasks[user_id] = {"username": username, "count": 0}
     user_tasks[user_id]["count"] += 1

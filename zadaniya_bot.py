@@ -70,7 +70,8 @@ async def handle_task(message: types.Message):
         user_tasks[user_id] = {"username": username, "count": 0}
     user_tasks[user_id]["count"] += 1
 
-    await message.reply(f"✅ Задание принято!")
+    await bot.send_message(chat_id=message.chat.id, text=f"✅ Задание принято!")
+
 
 @dp.message_handler(commands=["статистика"])
 async def handle_stats(message: types.Message):

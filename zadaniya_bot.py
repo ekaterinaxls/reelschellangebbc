@@ -3,34 +3,39 @@ import os
 import time
 from datetime import datetime
 
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import Update
+from aiogram.dispatcher.webhook import get_new_configured_app
+from fastapi import FastAPI, Request
+import uvicorn
+
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-# Получаем токен из переменной окружения
-API_TOKEN = os.getenv("API_TOKEN")
-
-# Настраиваем логирование
+# Настройка логов
 logging.basicConfig(level=logging.INFO)
+
+# Токен и webhook URL
+API_TOKEN = os.getenv("API_TOKEN")
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = f"https://reelschellangebbc.onrender.com{WEBHOOK_PATH}"  # ← твой адрес
+
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Подключение к Google Таблице
+# Таблица
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("creds.json", scope)
 client = gspread.authorize(creds)
-
-# Открываем таблицу по названию
 SHEET_NAME = "Задания Челленджа по REELS"
-sheet = client.open(SHEET_NAME).sheet1  # используем первый лист
+sheet = client.open(SHEET_NAME).sheet1
 
-# Локальный подсчёт статистики
+# Память о последних сообщениях
+last_messages = {}
 user_tasks = {}
 
-# Храним последние сообщения от пользователей
-last_messages = {}
-
+# Бот-логика
 @dp.message_handler(lambda message: "#задание" in message.text.lower())
 async def handle_task(message: types.Message):
     user_id = message.from_user.id
@@ -38,18 +43,15 @@ async def handle_task(message: types.Message):
     task_text = message.text.strip()
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Проверка на повтор за последние 10 секунд
+    # Проверка на повтор от одного юзера за 10 сек
     current_time = time.time()
     if user_id in last_messages:
         last_text, last_time = last_messages[user_id]
         if task_text == last_text and (current_time - last_time) < 10:
-            # Дубликат → просто игнорируем
-            return
+            return  # Просто игнорируем
 
-    # Сохраняем текущий текст и время
     last_messages[user_id] = (task_text, current_time)
 
-    # Проверка на дубли в таблице (как раньше)
     try:
         existing_tasks = sheet.col_values(3)
     except Exception as e:
@@ -84,5 +86,16 @@ async def handle_stats(message: types.Message):
 
     await message.reply(stats)
 
-if __name__ == "__main__":
-    executor.start_polling(dp, skip_updates=True)
+# FastAPI-приложение
+app = FastAPI()
+
+@app.on_event("startup")
+async def on_startup():
+    await bot.set_webhook(WEBHOOK_URL)
+
+@app.post(WEBHOOK_PATH)
+async def telegram_webhook(request: Request):
+    data = await request.json()
+    update = Update.to_object(data)
+    await dp.process_update(update)
+    return {"ok": True}

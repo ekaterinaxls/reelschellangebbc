@@ -1,3 +1,4 @@
+executor.start_polling(dp, skip_updates=True)
 import logging
 import os
 import time

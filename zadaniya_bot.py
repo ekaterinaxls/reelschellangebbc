@@ -88,3 +88,15 @@ async def handle_stats(message: types.Message):
 
 if __name__ == "__main__":
     executor.start_polling(dp, skip_updates=True)
+
+if __name__ == "__main__":
+    import asyncio
+
+    async def clear_webhook():
+        await bot.delete_webhook()
+        print("✅ Webhook удалён")
+
+    asyncio.get_event_loop().run_until_complete(clear_webhook())
+
+    executor.start_polling(dp, skip_updates=True)
+
